@@ -46,5 +46,5 @@ if is_search:
     for i, p in enumerate(output):
         with cols[i % num_columns]:
             st.image(
-                p['image'], caption=f"Score: {p['score']:.1f}", use_column_width=True
+                p['image'], caption=f"Score: {p['score']:.1f}", use_container_width=True
             )
