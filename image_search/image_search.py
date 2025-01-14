@@ -62,7 +62,7 @@ class Load_Data:
 class Search_Setup:
     """ A class for setting up and running image similarity search."""
     def __init__(self, image_list: list, model_name='openai/clip-vit-base-patch16', 
-                 image_count: int = None, batch_size: int = 1):
+                 image_count: int = None):
         """
         Parameters:
         -----------
@@ -82,8 +82,6 @@ class Search_Setup:
             self.image_list = image_list
         else:
             self.image_list = image_list[:image_count]
-        self.batch_size = batch_size
-        self.index = None
     
     def _extract(self, img):
         # Preprocess the image
@@ -93,14 +91,14 @@ class Search_Setup:
         features = self.model.get_image_features(**image_inputs)
         return features
     
-    def _start_feature_extraction(self, image_list):
+    def _start_feature_extraction(self, image_list:list, batch_size:int = 1):
         i = 0
-        n_batch = (len(image_list) + self.batch_size - 1) // self.batch_size
+        n_batch = (len(image_list) + batch_size - 1) // batch_size
         features = []
         for i in tqdm(range(n_batch)):
             img = [
                 Image.open(p).resize((224, 224)).convert('RGB')
-                for p in image_list[i*self.batch_size:(i+1)*self.batch_size]
+                for p in image_list[i*batch_size:(i+1)*batch_size]
             ]
             features.append(self._extract(img))
         return torch.concat(features, dim=0).detach()
@@ -108,21 +106,21 @@ class Search_Setup:
     def _start_indexing(self, features, method='ip'):
         d = len(features[0])
         if method == 'l2':
-            self.index = faiss.IndexFlatL2(d)
+            index = faiss.IndexFlatL2(d)
         else:
-            self.index = faiss.IndexFlatIP(d)
-        self.index.add(features)
-        # faiss.write_index(self.index, FAISS_PATH)
-        # print(f'Saved the Indexed File at: {FAISS_PATH}')
+            index = faiss.IndexFlatIP(d)
+        index.add(features)
+        faiss.write_index(index, FAISS_PATH)
+        print(f'Saved the Indexed File at: {FAISS_PATH}')
     
-    def run_index(self, method='ip'):
+    def run_index(self, method='ip', batch_size:int = 1):
         """
         Indexes the images in the image_list and creates an index file for fast similarity search.
         """
-        features = self._start_feature_extraction(self.image_list)
+        features = self._start_feature_extraction(self.image_list, batch_size=batch_size)
         self._start_indexing(features, method=method)
     
-    def add_images_to_index(self, new_image_paths: list):
+    def add_images_to_index(self, new_image_paths: list, batch_size:int = 1):
         """
         Adds new images to the existing index.
 
@@ -132,24 +130,24 @@ class Search_Setup:
             A list of paths to the new images to be added to the index.
         """
         # Load existing index
-        # index = faiss.read_index(FAISS_PATH)
+        index = faiss.read_index(FAISS_PATH)
 
         # Extract features from the new image
-        features = self._start_feature_extraction(new_image_paths)
+        features = self._start_feature_extraction(new_image_paths, batch_size=batch_size)
 
         # Add the new image to the index
         self.image_list.extend(new_image_paths)
-        self.index.add(features)
+        index.add(features)
 
         # Save the updated index
-        # faiss.write_index(self.index, FAISS_PATH)
-        # print(f'Saved the Indexed File at: {FAISS_PATH}')
+        faiss.write_index(index, FAISS_PATH)
+        print(f'Saved the Indexed File at: {FAISS_PATH}')
 
     def _search_by_vector(self, v, n: int):
-        # index = faiss.read_index(FAISS_PATH)
-        D, I = self.index.search(v, n)
+        index = faiss.read_index(FAISS_PATH)
+        D, I = index.search(v, n)
         return [
-            {'i': I[0][i], 'image': self.image_list[I[0][i]], 'score': D[0][i]}
+            {'i': int(I[0][i]), 'image': self.image_list[I[0][i]], 'score': float(D[0][i])}
             for i in range(n)
         ]
     
@@ -203,12 +201,11 @@ if __name__ == '__main__':
     # Set up the search engine
     st = Search_Setup(
         image_list=image_list, 
-        model_name='openai/clip-vit-base-patch16',
-        batch_size=1
+        model_name='openai/clip-vit-base-patch16'
     )
 
     # Index the images
-    st.run_index()
+    st.run_index(batch_size=16)
 
     # Search for mage by text
     query = 'shopping for books'

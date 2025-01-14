@@ -1,6 +1,6 @@
---find-links https://download.pytorch.org/whl/torch_stable.html
+django
 torch
-sentence-transformers
-streamlit
+transformers
 faiss-cpu
+Pillow
 tqdm
