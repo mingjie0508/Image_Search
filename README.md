@@ -1,12 +1,12 @@
 # Image_Search
 
-Dajango app to search for images by text.
+Django app to search for images by text.
 
-![screenshot](screenshots/screenshot_1.jpg)
+<img src="screenshots/screenshot_1.jpg" alt="App screenshot" width="561">
 
 The overall workflow is illustrated below. Search results are ranked by similarity between text and image embeddings. Top images are evaluated by asking and answering questions about it with the power of large language models and visual question answering models.
 
-![workflow](screenshots/screenshot_2.png)
+<img src="screenshots/screenshot_2.png" alt="Workflow" width="561">
 
 ### Installation
 To run the app locally, install the libraries
